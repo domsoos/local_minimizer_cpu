@@ -1,1 +1,2 @@
-# local_minimizer_cpu
+# global_optimizer_cpu
+HPC Research Project for Optimization
