@@ -10,8 +10,8 @@ struct Individual {
     double fitness;
 };
 
-std::vector<Individual> init_population(std::function<double(std::vector<double> &)> func, int dim, std::vector<double> x0, int pop_size, std::string algorithm, const double lower, const double upper);
+std::vector<Individual> init_population(std::function<double(std::vector<double> &)> func, std::function<std::vector<double>(const std::vector<double>&)> der, int dim, std::vector<double> x0, int pop_size, std::string algorithm, const double lower, const double upper);
 Individual tournament_selection(std::vector<Individual> population);
-std::vector<Individual> crossover(std::function<double(std::vector<double> &)> func, Individual ind1, Individual ind2, std::string algorithm);
+std::vector<Individual> crossover(std::function<double(std::vector<double> &)> func,std::function<std::vector<double>(const std::vector<double>&)> der, Individual ind1, Individual ind2, std::string algorithm);
 void mutate(Individual &ind);
-std::vector<Individual> genetic_algo(std::function<double(std::vector<double> &)> func, int max_gens, int pop_size, int dim, std::vector<double> x0, std::string algorithm, const double lower, const double upper);
+std::vector<Individual> genetic_algo(std::function<double(std::vector<double> &)> func,std::function<std::vector<double>(const std::vector<double>&)> der, int max_gens, int pop_size, int dim, std::vector<double> x0, std::string algorithm, const double lower, const double upper);

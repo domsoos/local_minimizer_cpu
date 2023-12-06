@@ -1,0 +1,17 @@
+/Users/domsoos/Desktop/research/hipsters/optimization/refactored/build/CMakeFiles/test.dir
+/Users/domsoos/Desktop/research/hipsters/optimization/refactored/build/CMakeFiles/edit_cache.dir
+/Users/domsoos/Desktop/research/hipsters/optimization/refactored/build/CMakeFiles/rebuild_cache.dir
+/Users/domsoos/Desktop/research/hipsters/optimization/refactored/build/src/CMakeFiles/main_app.dir
+/Users/domsoos/Desktop/research/hipsters/optimization/refactored/build/src/CMakeFiles/test.dir
+/Users/domsoos/Desktop/research/hipsters/optimization/refactored/build/src/CMakeFiles/edit_cache.dir
+/Users/domsoos/Desktop/research/hipsters/optimization/refactored/build/src/CMakeFiles/rebuild_cache.dir
+/Users/domsoos/Desktop/research/hipsters/optimization/refactored/build/lib/CMakeFiles/core_lib.dir
+/Users/domsoos/Desktop/research/hipsters/optimization/refactored/build/lib/CMakeFiles/test.dir
+/Users/domsoos/Desktop/research/hipsters/optimization/refactored/build/lib/CMakeFiles/edit_cache.dir
+/Users/domsoos/Desktop/research/hipsters/optimization/refactored/build/lib/CMakeFiles/rebuild_cache.dir
+/Users/domsoos/Desktop/research/hipsters/optimization/refactored/build/tests/CMakeFiles/utility_tests.dir
+/Users/domsoos/Desktop/research/hipsters/optimization/refactored/build/tests/CMakeFiles/optimization_tests.dir
+/Users/domsoos/Desktop/research/hipsters/optimization/refactored/build/tests/CMakeFiles/function_tests.dir
+/Users/domsoos/Desktop/research/hipsters/optimization/refactored/build/tests/CMakeFiles/test.dir
+/Users/domsoos/Desktop/research/hipsters/optimization/refactored/build/tests/CMakeFiles/edit_cache.dir
+/Users/domsoos/Desktop/research/hipsters/optimization/refactored/build/tests/CMakeFiles/rebuild_cache.dir

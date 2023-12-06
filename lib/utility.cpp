@@ -43,8 +43,31 @@ void printVectors(int i, double fnew,std::vector<double> x,std::vector<double> d
     std::cout << "current alpha =  " << alpha <<std::endl;
 }
 
+std::string getAlgorithm() {
+    char answer, lbfgs, box;
+    std::cout << "\nChoose the algorithm"<<std::endl;;
+    std::cout << "Use BFGS? ";
+    std::cin >> answer;
+    if (std::tolower(answer) == 'y') {
+        std::cout << "Limited memory variant - L-BFGS? ";
+        std::cin >> lbfgs;
+        if (std::tolower(lbfgs) == 'y') {
+            std::cout << "bounded? ";
+            std::cin >> box;
+            if(std::tolower(box) == 'y') {
+                return "lbfgsb";
+            } else {
+                return "lbfgs";
+            }
+        } else {
+            return "bfgs";
+        }
+    }
+    else { return "dfp";}
+}
+
 bool isValidDouble(double val) {
-    if (std::isnan(val) || std::isinf(val)) {return false; std::cout << "invalid value"<<std::endl;}
+    if (std::isnan(val) || std::isinf(val)) {std::cout << "invalid value: "<<val<<std::endl;return false; }
     else {return true;}
 } 
 

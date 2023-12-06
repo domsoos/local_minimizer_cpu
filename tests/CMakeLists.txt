@@ -34,3 +34,4 @@ target_include_directories(utility_tests PUBLIC ../lib ../src)
 target_include_directories(optimization_tests PUBLIC ../lib ../src)
 target_include_directories(function_tests PUBLIC ../lib ../src)
 #target_include_directories(genetic_tests PUBLIC ../lib ../src)
+

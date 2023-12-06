@@ -30,7 +30,7 @@ void testLineSearch() {
     std::cout << "starting point = " << f0 <<std::endl;
     double d0 = directional_derivative(g, p);
     //                                    f      ,  f0         ,    d0,
-    double alpha = dlib_line_search(testFunction, testFunction(x),d0,
+    double alpha = dlib_line_search(testFunction,testFunctionDerivative, testFunction(x),d0,
             0.15,                  // rho
             0.9,                  // sigma
             1e-12,                // min_f

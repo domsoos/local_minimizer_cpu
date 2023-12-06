@@ -2,7 +2,7 @@
 #include "genetic.h"
 
 // Generate initial population
-std::vector<Individual> init_population(std::function<double(std::vector<double> &)> func, int dim, std::vector<double> x0, int pop_size, std::string algorithm, const double lower, const double upper) {
+std::vector<Individual> init_population(std::function<double(std::vector<double> &)> func,std::function<std::vector<double>(const std::vector<double>&)> der,  int dim, std::vector<double> x0, int pop_size, std::string algorithm, const double lower, const double upper) {
     std::vector<Individual> population;
     double nlower, nupper;
 
@@ -23,7 +23,7 @@ std::vector<Individual> init_population(std::function<double(std::vector<double>
             genes.push_back(random);
         }//end for
         ind.genes = genes;
-        ind.fitness = optimize(func, ind.genes, algorithm, 1e-12, 2500, nlower, nupper); 
+        ind.fitness = optimize(func,der, ind.genes, algorithm, 1e-12, 2500, nlower, nupper); 
         population.push_back(ind);
     }
     return population;
@@ -45,7 +45,7 @@ Individual tournament_selection(std::vector<Individual> population) {
 }// end tournament_selection
 
 // Crossover
-std::vector<Individual> crossover(std::function<double(std::vector<double> &)> func, Individual ind1, Individual ind2, std::string algorithm,const double lower, const double upper) {
+std::vector<Individual> crossover(std::function<double(std::vector<double> &)> func,std::function<std::vector<double>(const std::vector<double>&)> der,  Individual ind1, Individual ind2, std::string algorithm,const double lower, const double upper) {
     std::vector<Individual> offspring;
     offspring.resize(2);
 
@@ -57,8 +57,8 @@ std::vector<Individual> crossover(std::function<double(std::vector<double> &)> f
     offspring[1].genes = {ind2.genes[0], ind1.genes[1]};
 
     // Evaluate the fitness of each offspring from the parents
-    offspring[0].fitness = optimize(func, offspring[0].genes,algorithm, 1e-12, 2500, lower, upper);
-    offspring[1].fitness = optimize(func, offspring[1].genes,algorithm, 1e-12, 2500, lower, upper);
+    offspring[0].fitness = optimize(func,der, offspring[0].genes,algorithm, 1e-12, 2500, lower, upper);
+    offspring[1].fitness = optimize(func,der, offspring[1].genes,algorithm, 1e-12, 2500, lower, upper);
 
     return offspring;
 }// end crossover
@@ -73,8 +73,8 @@ void mutate(Individual &ind) {
 }// end mutate
 
 // Genetic algorithm 
-std::vector<Individual> genetic_algo(std::function<double(std::vector<double> &)> func, int max_gens, int pop_size, int dim, std::vector<double> x0, std::string algorithm, const double lower, const double upper) {
-    std::vector<Individual> population = init_population(func, dim, x0,pop_size, algorithm, lower, upper);
+std::vector<Individual> genetic_algo(std::function<double(std::vector<double> &)> func, std::function<std::vector<double>(const std::vector<double>&)> der, int max_gens, int pop_size, int dim, std::vector<double> x0, std::string algorithm, const double lower, const double upper) {
+    std::vector<Individual> population = init_population(func, der, dim, x0,pop_size, algorithm, lower, upper);
     for (int gen = 0; gen < max_gens; gen++) {
         // Create next generation
         std::vector<Individual> next_gen;
@@ -86,7 +86,7 @@ std::vector<Individual> genetic_algo(std::function<double(std::vector<double> &)
             Individual ind2 = tournament_selection(population);
 
             // Crossover
-            auto offspring = crossover(func, ind1, ind2, algorithm, lower, upper);
+            auto offspring = crossover(func, der, ind1, ind2, algorithm, lower, upper);
 
             // Mutation
             mutate(offspring[0]);

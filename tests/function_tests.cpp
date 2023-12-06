@@ -105,7 +105,6 @@ void testFletcherPowellHelicalValley() {
     assert(std::abs(f0) == 2500.0);
     assert(std::abs(f1) == 0.0); 
 }
-
 void testFletcherPowellHelicalValleyDerivative() {
     std::vector<double> x0 = {1.0, 0.0, 0.0};
     std::vector<double> x1 = {1.0, 1.0, 0.0};

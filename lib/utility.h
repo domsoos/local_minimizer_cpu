@@ -23,6 +23,7 @@ extern std::uniform_real_distribution<> distr;
 
 void print_vector(std::vector<double> v);
 void printVectors(int i, double fnew,std::vector<double> x,std::vector<double> delta_x,std::vector<double> delta_g,double alpha);
+std::string getAlgorithm();
 
 bool isValidDouble(double val);
 std::vector<double> scale_vector(const std::vector<double> &v1, double scalar);

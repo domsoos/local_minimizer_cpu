@@ -3,141 +3,221 @@
 #include "optimization.h"
 
 #include <sys/resource.h>
+#include <dlib/optimization.h>
+
 #include <fstream>
 #include <sstream>
 
 //int funev = 0, gradev = 0;
 
+using FunctionType = std::function<double(const std::vector<double>&)>;
+using DerivativeType = std::function<std::vector<double>(const std::vector<double>&)>;
+
+typedef dlib::matrix<double,2,1> column_vector2D;
+typedef dlib::matrix<double,3,1> column_vector3D;
+typedef dlib::matrix<double,4,1> column_vector4D;
+typedef dlib::matrix<double,30,1> column_vector30D;
+
+void printdlibvector(dlib::matrix<double> c) {
+    for(int i=0;i<c.size();i++) {
+        std::cout << c(i) << " ";
+    }
+    std::cout << std::endl;
+}
+
+double rosenbrock_dlib_wrapper(const column_vector2D& m)
+{
+  funev++;
+  return rosenbrock({m(0), m(1)});
+}
+
+double 
+woods_dlib_wrapper(const column_vector4D& m)
+{
+    funev++;
+    return woods({m(0),m(1),m(2),m(3)});
+}
+
+double
+powell_dlib_wrapper(const column_vector4D& m)
+{
+    funev++;
+    return powell_quartic({m(0),m(1),m(2),m(3)});
+}
+
+double 
+helical_dlib_wrapper(const column_vector3D& m)
+{
+    funev++;
+    return helical_valley({m(0),m(1),m(2)});
+}
+
+double 
+trig_dlib_wrapper(const column_vector30D& m)
+{
+    funev++;
+    std::vector<double> v(30);
+    for(int i=0; i<30;i++) {
+        v.push_back(m(i));
+    }
+    return fletcher_powell_trig(v);
+}
+
+struct  ds {
+    double min;
+    long it;
+};
+
+template <typename MatrixType>
+std::vector<double> dlib_optimization(MatrixType x, std::function<double(const MatrixType&)> fun_wrapper) {
+    std::cout << "fun init = "<< fun_wrapper(x) << std::endl;
+    auto start = std::chrono::high_resolution_clock::now();
+    dlib::find_min_using_approximate_derivatives(dlib::bfgs_search_strategy(),
+                                    dlib::objective_delta_stop_strategy(1e-6),
+                                    fun_wrapper, x, 0.0);
+    //std::cout << "fmin = " << belo[0] << "\nit = " << belo[1] << std::endl;
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+    long time = duration.count();
+    printdlibvector(x);
+    std::cout << "min = " << std::abs(fun_wrapper(x)) << std::endl;
+    std::cout << "\ntime = " << time << " ms" << std::endl;
+    std::cout << "funev =  " << funev << std::endl;
+    return {static_cast<double>(time), fun_wrapper(x)};
+}
+
 int main() {
     int dim;
     //long before, after, result;
     double error;
-    char answer, going;
+    char going;
     bool done = false;
     funev = 0, gradev = 0;
     double lower, upper;
     double x = distr(eng);
+    std::vector<double> trig_vec(30);
+    std::vector<double> true_trig(30);
+    for(int i=0;i<30;i++){
+        trig_vec.push_back(distr(eng));
+        true_trig.push_back(0.0);
+    }
 
     std::vector<std::vector<double>> initialPoints = {
         {-1.2,1.0}, // Rosenbrock 
         {-3.0, -1.0, -3.0, -1.0}, // Woods 
         {3.0, -1.0, 0.0, 1.0}, // Powell
-        {-1.0, 0.0, 0.0}, // FP Helical Valley
-        {x, x, x} // FP Trig
+        //{-1.0, 0.0, 0.0}, // FP Helical Valley
+        {-6.88376800380764878e+05,3.00693715986630297e+05,5.11036303162183205e+05},
+        //{0.362191,10.932092, 10.0}, //-3.82465e-07,-3.90997e-07    1.3746e-10
+        trig_vec // FP Trig
+    };
+
+    std::vector<FunctionType> functions = {
+        rosenbrock,
+        woods,
+        powell_quartic,
+        helical_valley,
+        fletcher_powell_trig,
+    };
+
+    std::vector<DerivativeType> derivatives = {
+        rosenbrock_gradient,
+        woods_derivative,
+        powell_quartic_derivative,
+        helical_valley_derivative,
+        fletcher_powell_trig_derivative
+    };
+
+    std::vector<std::string> const names = {
+        "Rosenbrock",
+        "Woods",
+        "Powell Quartic",
+        "Fletcher Powell Helical Valley",
+        "Fletcher Powell Trigonometric"
+    };
+
+    std::vector<std::vector<double>> const trueMin = {// last in vec is funmin
+        {1.0,1.0,0.0}, // Rosen
+        {1.0,1.0,1.0,1.0,0.0}, // Woods
+        {0.0,0.0,0.0,0.0,0.0}, // Powell
+        {1.0,0.0,0.0,0.0}, // Helical
+        true_trig, // Trig
     };
 
     std::string algorithm;
-
-    std::cout << "\n\nMultidimensional Rosenbrock Optimization" << std::endl;
-    std::cout << "How many dimensions? ";
-    std::cin >> dim;
-
     while(!done) {
-        std::cout << "\nChoose the algorithm"<<std::endl;;
-        std::cout << "Use BFGS? ";
-        std::cin >> answer;
-        if (std::tolower(answer) == 'y') {
-            char lbfgs, box;
-            std::cout << "Limited memory variant - L-BFGS? ";
-            std::cin >> lbfgs;
-            if (std::tolower(lbfgs) == 'y') {
-                std::cout << "bounded? ";
-                std::cin >> box;
-                if(std::tolower(box) == 'y') {
-                    algorithm = "lbfgsb";
-                } else {
-                    algorithm = "lbfgs";
-                }
-            } else {
-                algorithm = "bfgs";
+        algorithm = getAlgorithm();
+        for(int it=0;it<functions.size()-1;it++) {
+            funev = 0, gradev = 0;
+            if (algorithm  == "lbfgsb"){
+                std::cout<<"Enter lower bound: ";
+                std::cin>>lower;
+                std::cout<<"Enter upper bound: ";
+                std::cin>>upper;
+            }// end if lbfgsb
+
+            std::vector<double> x0 = initialPoints[it];
+            std::function<double(const std::vector<double>&)> fun = functions[it];
+            std::function<std::vector<double>(const std::vector<double>&)> der = derivatives[it];
+
+            std::cout << "\n\n\t" << names[it] <<" Function Optimization\n\n\n\t\t~~~Celsius Optimization~~~\n";
+            
+            std::cout << "x0 = ";
+            for(int i=0;i<x0.size();i++) {std::cout << x0[i] << " ";}
+            std::cout << "\ninit fun = " << fun(x0) << std::endl;
+
+            auto start = std::chrono::high_resolution_clock::now();
+            error = minimize(fun,der,x0,names[it],0,0,dim, algorithm, lower, upper);
+            auto stop = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+            long time = duration.count();
+            std::cout << "\ntime: " << time << " ms" << std::endl;
+
+            std::cout << "\nGlobal Minimum(";
+            for(int i=0;i<trueMin[it].size()-1;i++) {
+                std::cout << trueMin[it][i] << ",";
             }
-        }
-        else { algorithm = "dfp";}
-        if (algorithm  == "lbfgsb"){
-            std::cout<<"Enter lower bound: ";
-            std::cin>>lower;
-            std::cout<<"Enter upper bound: ";
-            std::cin>>upper;
-        }// end if lbfgsb
-
-        std::vector<double> x0;
-        for(int i=0;i<dim;i++){
-            x0.push_back(-1.2);
-        }
-        x0[0] = -1.2;
-        x0[1] = 1.0;
-        std::cout << "Initial points: ";
-        for(int i=0;i<x0.size();i++){std::cout<<"x["<<i<<"]: "<<x0[i]<<std::endl;}
-        std::cout << "Function value: " << rosenbrock(x0) << std::endl;
-        auto start = std::chrono::high_resolution_clock::now();
-        error = minimize(rosenbrock,x0,"Rosenbrock",0,0,dim, algorithm, lower, upper);
-        auto stop = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-        long time = duration.count();
-        std::cout << "\ntime: " << time << " ms" << std::endl;
-
-        std::cout << "\nGlobal Minimum(";
-        for(int i=0;i<dim;i++) {
-            if(i+1 == dim) {
-                std::cout << "1.0";
-            } else {
-                std::cout << "1.0, ";
+            std::cout << ") = " << trueMin[it][-1] << "\nError = " << error << std::endl;
+            std::cout << "Function Evaluations: " << funev << "\tGradient Evaluations: " << gradev << std::endl << std::endl;
+        
+            funev = 0, gradev = 0;
+            std::cout << "\n\t\t~~~DLIB OPTIMIZATION~~~" << std::endl;
+            if(names[it] == "Rosenbrock") {
+                column_vector2D r0 = {-1.2,1.0};
+                std::function<double(const column_vector2D&)> func_wrapper = rosenbrock_dlib_wrapper;
+                std::vector<double> belo = dlib_optimization(r0,func_wrapper);
             }
+            else if(names[it] ==  "Woods") {
+                column_vector4D w0 = {-3.0, -1.0, -3.0, -1.0};
+                std::function<double(const column_vector4D&)> func_wrapper = woods_dlib_wrapper;
+                std::vector<double> belo = dlib_optimization(w0,func_wrapper);
+            }
+            else if(names[it] == "Powell Quartic") {
+                column_vector4D p0 = {3.0, -1.0, 0.0, 1.0};
+                std::function<double(const column_vector4D&)> func_wrapper = powell_dlib_wrapper;
+                std::vector<double> belo = dlib_optimization(p0,func_wrapper);
+            }
+            else if(names[it] == "Fletcher Powell Helical Valley") {
+                column_vector3D h0 =  {-6.88376800380764878e+05,3.00693715986630297e+05,5.11036303162183205e+05};
+                std::function<double(const column_vector3D&)> func_wrapper = helical_dlib_wrapper;
+                std::vector<double> belo = dlib_optimization(h0,func_wrapper);         
+            }
+            else if(names[it] == "Fletcher Powell Trigonometric") {
+                column_vector30D t0 = {distr(eng),distr(eng),distr(eng),distr(eng),distr(eng),distr(eng),distr(eng),distr(eng),distr(eng),distr(eng),distr(eng),distr(eng),distr(eng),distr(eng),distr(eng),distr(eng),distr(eng),distr(eng),distr(eng),distr(eng),distr(eng),distr(eng),distr(eng),distr(eng),distr(eng),distr(eng),distr(eng),distr(eng),distr(eng)};
+                std::function<double(const column_vector30D&)> func_wrapper = trig_dlib_wrapper;
+                std::vector<double> belo = dlib_optimization(t0,func_wrapper);  
+            }
+            // Save belo to the file belo[0] = time, belo[1] =
         }
-        std::cout <<") = 0\n Error = " <<error << std::endl;
-        std::cout << "Function Evaluations: " << funev << "\tGradient Evaluations: " << gradev << std::endl;
-
+        done = true;
+        /*
         std::cout << "\n\nKeep going? ";
         std::cin >> going;
         if(std::tolower(going) != 'y'){
             std::cout << "Goodbye!"<<std::endl;
             done = true;
         }
-        funev = 0, gradev = 0;
+        */
     }//end while
     return 0;
-    /*
-    std::vector<double> r0 = {-1.2, 2.0};
-    std::cout << "\n\nrosenbrock(-1.2, 2.0) = " << rosenbrock(r0);
-    minimum = minimize(rosenbrock, r0, "Rosenbrock", pop_size, max_gens, 2, algorithm);
-    error = fabs(minimum);
-    std::cout << "\nGlobal Minimum(1.0, 1.0) = 0\n Error = " <<error;
-
-    std::vector<double> gsp = {1.0, 1.0};
-    std::cout << "\n\ngoldstein-price(0.0, -1.0) = " << goldstein_price(gsp);
-    minimum = minimize(goldstein_price, gsp, "Gold-Stein Price", pop_size, max_gens, 2, algorithm);
-    error = 3 - minimum;
-    std::cout << "\nGlobal Minimum(0.0, -1.0) = 3\nError = "<<error;
-
-
-    std::vector<double> easy = {1.1, 1.2, 1.3, 1.4};
-    std::vector<double> w0 = {-3.0, -1.0, -3.0, -1.0};
-    std::cout << "\n\nwoord(-3.0, -1.0, -3.0, -1.0) = " << woods(w0);
-    minimize(woods, w0, "Woods", pop_size, max_gens, 4, algorithm);
-
-    std::vector<double> p0= {-3.0, -1.0, 0.0, -1.0};
-    std::cout << "\n\npowell(x0) = " << powell_quartic(p0);
-    minimize(powell_quartic, p0, "Powell Quartic", pop_size, max_gens, 4, algorithm);
-
-    std::vector<double> fp0 = {1.0, -1.0}; // ?? 
-    std::cout << "\n\nfletcher_powell_trig(x0) = " << fletcher_powell_trig(fp0);
-    minimize(fletcher_powell_trig, fp0, "Fletcher Powell Trig", pop_size, max_gens, 2, algorithm);
-
-    std::vector<double> t0 = {0.02, 4000.0, 250.0};
-    std::cout << "\n\nthermister(x0) = " << thermister(t0);
-    minimize(thermister, t0, "Thermister", pop_size, max_gens, 3, algorithm);
-
-    std::vector<double> s0 = {0.0, 20.0};
-    std::cout << "\n\nstwo_exponentials(x0) = " << two_exponentials(s0);
-    minimize(two_exponentials, s0, "Sum of Two Exponentials", pop_size, max_gens, 2, algorithm);
-
-    std::vector<double> c0 = {0.1, 0.1, 0.1};
-    std::cout << "\n\nchemical_equilibrium(x0) = " << chemical_equilibrium(c0);
-    minimize(chemical_equilibrium,c0,"Chemical Equilibrium", pop_size, max_gens, 3, algorithm);
-
-    std::vector<double> h0 = {4.7, 6.1, 6.5, 8.0};
-    std::cout << "\n\nheat_conduction(x0) = " << heat_conduction(h0);
-    minimize(heat_conduction, h0, "Heat Conduction", pop_size, max_gens, 4, algorithm);
-    */
-    //return 0;
 }

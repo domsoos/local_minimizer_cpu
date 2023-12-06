@@ -204,6 +204,7 @@ T put_in_range(const T& a, const T& b, const T& val) {
     }
     return val;
 }
+
 inline double put_in_range(const double& a, const double& b, const double& val)
 {
     return put_in_range<double>(a, b, val);
@@ -263,7 +264,7 @@ inline double poly_min_extrap(double f0, double d0, double x1, double f_x1, doub
 }
 
 
-double dlib_line_search(std::function<double(std::vector<double> &)> f,double f0,double d0,double rho,double sigma,double min_f,const int max_iter,std::vector<double> &x,std::vector<double> &p, double lambda)
+double dlib_line_search(std::function<double(std::vector<double> &)> f, std::function<std::vector<double>(const std::vector<double>&)> der, double f0,double d0,double rho,double sigma,double min_f,const int max_iter,std::vector<double> &x,std::vector<double> &p, double lambda)
     {
     //std::function<std::vector<double>(const std::vector<double>&)> der,
     if (!(0 < rho && rho < sigma && sigma < 1 && max_iter > 0)) {
@@ -330,7 +331,7 @@ double dlib_line_search(std::function<double(std::vector<double> &)> f,double f0
             x_alpha[i] = x[i] + alpha * p[i];
         }
         const double val = f(x_alpha);
-        const double val_der = directional_derivative(rosenbrock_gradient_regularized(x_alpha),p);
+        const double val_der = directional_derivative(der(x_alpha),p);
 
         // we are done with the line search since we found a value smaller
         // than the minimum f value
@@ -411,7 +412,7 @@ double dlib_line_search(std::function<double(std::vector<double> &)> f,double f0
             x_alpha[i] = x[i] + alpha * p[i];
         }
         const double val = f(x_alpha);
-        const double val_der = directional_derivative(rosenbrock_gradient_regularized(x_alpha),p);
+        const double val_der = directional_derivative(der(x_alpha),p);
 
         // we are done with the line search since we found a value smaller
         // than the minimum f value or we ran out of iterations.
@@ -566,7 +567,13 @@ void bfgs_update(std::vector<std::vector<double>>& H,
     double yt_s = 1.0 / dot_product(delta_g, delta_x); // y^T s
 
     if (std::abs(yt_s) < 1e-10) {
-        std::cout << "yt_s is too close to zero: " << yt_s << std::endl;
+        std::cout << "yt_s is too close to zero, resetting H to identity matrix: " << yt_s << std::endl;
+        int n = delta_x.size();
+        H.clear();
+        H.resize(n, std::vector<double>(n, 0));
+        for (int i = 0; i < n; i++) {
+            H[i][i] = 1.0; // Reset H to identity matrix
+        }
         return;
     }
 
@@ -588,6 +595,67 @@ void bfgs_update(std::vector<std::vector<double>>& H,
 }
 
 
+template <typename Vector>
+void enhanced_bfgs_update(std::vector<std::vector<double>>& H, 
+                          const Vector& x,
+                          const Vector& funct_derivative,
+                          const Vector& prev_x,
+                          const Vector& prev_derivative,
+                          bool& been_used,
+                          bool& been_used_twice) 
+{
+    if (!been_used) {
+        // Set H to identity matrix
+        size_t n = x.size();
+        H.clear();
+        H.resize(n, std::vector<double>(n, 0));
+        for (size_t i = 0; i < n; i++) {
+            H[i][i] = 1.0;
+        }
+        been_used = true;
+    } else {
+        Vector delta = subtract_vectors(x,prev_x);
+        Vector gamma = subtract_vectors(funct_derivative,prev_derivative);
+
+        double dg = dot_product(delta, gamma);
+
+        // Initial H adjustment (as in Code 1)
+        if (!been_used_twice) {
+            double gg = dot_product(gamma, gamma);
+            if (std::abs(gg) > std::numeric_limits<double>::epsilon()) {
+                double temp = std::max(0.01, std::min(100.0, dg / gg));
+                H.clear();
+                H.resize(x.size(), std::vector<double>(x.size(), temp));
+                been_used_twice = true;
+            }
+        }
+
+        double yt_s = 1.0 / dg;
+        if (std::abs(yt_s) > 1e-15) {
+            // Matrix operations for BFGS update
+            for (size_t i = 0; i < x.size(); i++) {
+                for (size_t j = 0; j < x.size(); j++) {
+                    double syT = delta[i] * gamma[j];
+                    double ysT = gamma[i] * delta[j];
+                    double ssT = delta[i] * delta[j];
+                    H[i][j] = (1 - syT * yt_s) * H[i][j] * (1 - ysT * yt_s) + ssT * yt_s;
+                }
+            }
+        } else {
+            // Fallback to identity matrix
+            size_t n = x.size();
+            H.clear();
+            H.resize(n, std::vector<double>(n, 0));
+            for (size_t i = 0; i < n; i++) {
+                H[i][i] = 1.0;
+            }
+            been_used_twice = false;
+        }
+    }
+}
+
+
+
 void dfp_update(std::vector<std::vector<double>>& H, std::vector<double> delta_x, std::vector<double> delta_g) {
     double term2 = dot_product(delta_x, delta_g); // O(n)
     if (std::abs(term2) < 1e-10) {
@@ -603,7 +671,7 @@ void dfp_update(std::vector<std::vector<double>>& H, std::vector<double> delta_x
 
     // Calculate delta_g^T * H * delta_g
     double term5 = dot_product(delta_g, H_delta_g); // O(n)
-    if (std::abs(term5) < 1e-10) {
+    if (std::abs(term5) < 1e-15) {
         std::cout << "term5 is too close to zero: " << term5 << std::endl;
         return;
     }
@@ -619,18 +687,19 @@ void dfp_update(std::vector<std::vector<double>>& H, std::vector<double> delta_x
     }
 }
 
-double optimize(std::function<double(std::vector<double> &)> func, std::vector<double> x0,std::string algorithm,const double tol,const int max_iter,const double lower, const double upper) {
+double optimize(std::function<double(std::vector<double> &)> func, std::function<std::vector<double>(const std::vector<double>&)> der, std::vector<double> x0,std::string algorithm,const double tol,const int max_iter,const double lower, const double upper) {
     double min_value = std::numeric_limits<double>::max();
     double alpha = 1.0,max_alpha = 1.0, lambda = 15.0;
     double min_alpha, fnew, delta_dot;
+    double current_fun, previous_fun, min_delta = 1e-25;
     
     std::vector<double> x = x0;
     std::vector<double> p, g, delta_x, delta_g, x_new;
     std::vector<double> x_new_a(x.size());
     if(algorithm.find("dfp") != std::string::npos) {
-        min_alpha = 1e-10;
+        min_alpha = 1e-6;
     } else {
-        min_alpha = 1e-10;
+        min_alpha = 1e-4;
     }
 
     std::pair<std::vector<double>, std::vector<double>> result;
@@ -647,21 +716,27 @@ double optimize(std::function<double(std::vector<double> &)> func, std::vector<d
     }//end for
     
     int early_stopping = 0;
+    int i;
+
+    bool been_used = false;
+    bool been_used_twice = false;
+
     // Main loop
-    for (int i = 0; i < 2500; i++) {
-        // Compute Gradient
-        g = rosenbrock_gradient(x);
-        for(int i=0;i<g.size();i++){
-            if(!isValidDouble(g[i])) {
-                std::cout << "exiting..."<<std::endl;
+    for (i = 0; i < max_iter; i++) {
+        //current_fun = func(x);
+        g = der(x); // Compute Gradient
+        /*for(int j=0;j<g.size();j++){
+            if(!isValidDouble(g[j])) {
+                std::cout << "i: "<<i << "j: "<<j<<"\nnonvalid value, exiting..."<<std::endl;
                 exit(0);
             }
         }
-        //std::cout<<std::endl;
+        */
         // Check if the length of gradient vector is less than our tolerance
-        if (norm(g) < 1e-12) {
+        if (norm(g) < tol) {
             min_value = std::min(min_value, func(x));
             global_min = min_value;
+            if(global_min > 0.0 && min_value > 0.0) { continue;}
             std::cout << i <<"# it" << std::endl;
             std::cout << "\nnorm(g): New Global Minimum: " << global_min << " with parameters:" <<std::endl;
             best_params = {};
@@ -677,10 +752,10 @@ double optimize(std::function<double(std::vector<double> &)> func, std::vector<d
         p = scale_vector(p, -1.0); //opposite of greatest increase
 
         /*** Calculate optimal step size in the search direction p ***/
-        alpha = dlib_line_search(func,func(x),dot_product(g, p), // Current derivative value along p
-            0.15,                  // rho
-            0.9,                  // sigma
-            1e-12,                // min_f
+        alpha = dlib_line_search(func,der, func(x),dot_product(g, p), // Current derivative value along p
+            0.15,                  // rho,  BFGS default=0.01, W&PQ=0.15, R=0.25, ALL=0.015
+            0.90,                  // sigma, BFGS default=0.90, W&PQ=0.90, R=0.75, ALL=0.90
+            1e-9,                // min_f, 1e-12 to 1e-7 to 1e-9
             100,x,p,lambda
         );
 
@@ -699,21 +774,19 @@ double optimize(std::function<double(std::vector<double> &)> func, std::vector<d
             x = result.first;
             g = result.second;
         } else {
-            // Update the current point x by taking a step of size alpha in the direction p.
-            x_new = add_vectors(x, scale_vector(p, alpha));
-
-            // Compute the difference between the new point and the old point, delta_x
-            delta_x = subtract_vectors(x_new, x);
-
-            // Compute the difference in the gradient at the new point and the old point, delta_g.
-            delta_g = subtract_vectors(rosenbrock_gradient(x_new), g);
-
-            delta_dot = dot_product(delta_x, delta_g);
+            x_new = add_vectors(x, scale_vector(p, alpha)); // Update the current point x by taking a step of size alpha in the direction p.
+            delta_x = subtract_vectors(x_new, x);           // Compute the difference between the new point and the old point, delta_x
+            delta_g = subtract_vectors(der(x_new), g);      // Compute the difference in the gradient at the new point and the old point, delta_g.
+            delta_dot = dot_product(delta_g, delta_x);
             if (std::abs(delta_dot) < 1e-10) {
-                printVectors(i, fnew, x, delta_x, delta_g, alpha);
+                //printVectors(i, fnew, x, delta_x, delta_g, alpha);
                 //break;
-                alpha *= 2.5; // 0.0000000
-                std::cout << "new alpha = " << alpha << std::endl;
+                if(alpha == min_alpha){
+                    alpha *= 2.5;
+                } else {
+                    alpha = 0.5;
+                }
+                //std::cout << "new alpha = " << alpha << std::endl;
                 std::vector<double> new_dir = scale_vector(p, alpha);
                 add_vectors(x, new_dir);
                 if(early_stopping < 10) {
@@ -722,31 +795,39 @@ double optimize(std::function<double(std::vector<double> &)> func, std::vector<d
                     break;
                 }
             }
-            if (algorithm == "bfgs") {
-                // Update the inverse Hessian approximation using BFGS              
+            if (algorithm == "bfgs") { // Update the inverse Hessian approximation using BFGS             
                 bfgs_update(H, delta_x, delta_g, delta_dot);
+                // INSERT IT HERREEEE !!!! enhanced_bfgs_update()
+                //enhanced_bfgs_update(H, x_new, der(x), x, g, been_used, been_used_twice);
             } else {// Update the approximation of the inverse Hessian using DFP
                 dfp_update(H, delta_x, delta_g);
             }
+            /*if (std::abs(current_fun - previous_fun) < min_delta)
+            {
+                std::cout << "delta fun < " << min_delta;
+                break;
+            }
+            previous_fun = current_fun;
+            */
             x = x_new;
             min_value = std::min(min_value, func(x));
+
         }//end else
         if(max_iter == i) {
             std::cout << "Max iterations reached"<<std::endl;
         }
     }// end main loop
     
-    for(int i=0;i<x.size();i++) {std::cout <<"x["<<i<<"]: " << x[i] << " "<<std::endl;}
-    std::cout << std::endl;
+    std::cout << i << " iterations" << std::endl;
+    print_vector(x);
     min_value = std::min(min_value, func(x));
     return min_value; 
-}// end dfp
+}// end optimize
 
-
-double minimize(std::function<double(std::vector<double> &)> func, std::vector<double> x0, std::string name, 
+double minimize(std::function<double(std::vector<double> &)> func,std::function<std::vector<double>(const std::vector<double>&)> der,  std::vector<double> x0, std::string name, 
              const int pop_size,const int max_gens,const int dim, std::string algorithm, const double lower, const double upper) {
     //global_min = std::numeric_limits<double>::max();
-    double minima = optimize(func, x0, algorithm, 1e-15, 10000, lower, upper);
+    double minima = optimize(func,der, x0, algorithm, 1e-15, 2000, lower, upper);
     std::cout << "Predicted Global minimum for " << name << ": " << minima <<std::endl;
     return minima;
 }

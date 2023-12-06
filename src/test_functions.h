@@ -10,28 +10,28 @@ double rosenbrock_regularized(const std::vector<double>& x);
 std::vector<double> rosenbrock_gradient_regularized(const std::vector<double>& x);
 
 // Woods and its derivative
-double woods(std::vector<double>& x);
+double woods(const std::vector<double>& x);
 std::vector<double> woods_derivative(const std::vector<double>& x);
 
 // Powell Quartic with Singular Hessian
-double powell_quartic(std::vector<double>& x);
+double powell_quartic(const std::vector<double>& x);
 std::vector<double> powell_quartic_derivative(const std::vector<double>& x);
 
 // Fletcher and Powell 3 Variable Helical Valley
-double helical_valley(std::vector<double>& x);
-std::vector<double> helical_valley_derivative(std::vector<double>& x);
+double helical_valley(const std::vector<double>& x);
+std::vector<double> helical_valley_derivative(const std::vector<double>& x);
 
 // Fletcher Powell Trigonometric Function
-double fletcher_powell_trig(std::vector<double>& x0);
+double fletcher_powell_trig(const std::vector<double>& x0);
 std::vector<double> fletcher_powell_trig_derivative(const std::vector<double>& x);
 
-double thermister(std::vector<double>& x);
-double two_exponentials(std::vector<double>& x);
-double chemical_equilibrium(std::vector<double>& x);
-double heat_conduction(std::vector<double>& x);
+double thermister(const std::vector<double>& x);
+double two_exponentials(const std::vector<double>& x);
+double chemical_equilibrium(const std::vector<double>& x);
+double heat_conduction(const std::vector<double>& x);
 
 double randomValue(double lower, double upper);
-double rastrigin(std::vector<double>& x);
-double ackley(std::vector<double>& x);
-double eggholder(std::vector<double>& x);
-double goldstein_price(std::vector<double>& x);
+double rastrigin(const std::vector<double>& x);
+double ackley(const std::vector<double>& x);
+double eggholder(const std::vector<double>& x);
+double goldstein_price(const std::vector<double>& x);

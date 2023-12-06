@@ -56,45 +56,9 @@ std::vector<double> rosenbrock_gradient_regularized(const std::vector<double>& x
   return grad;
 }
 
-// simulated annealing
-// 
-
-double rastrigin(std::vector<double>& x) {
-  double sum = 0;
-
-  for (int i = 0; i < x.size(); i++) {
-    sum += x[i] * x[i] - 10 * cos(2 * M_PI * x[i]); 
-  }
-  return 10 * x.size() + sum;
-}
-
-double ackley(std::vector<double>& x) {
-    double sum1 = 0;
-    double sum2 = 0;
-    for (int i = 0; i < x.size(); i++) {
-        sum1 += x[i] * x[i];
-        sum2 += cos(2 * M_PI * x[i]);
-    }
-    return -20 * exp(-0.2 * sqrt(sum1 / x.size())) - exp(sum2 / x.size()) + 20 + M_E; 
-}
-
-double eggholder(std::vector<double>& x) {
-  return -x[1] * sin(sqrt(abs(x[0] + x[1] + 47))) 
-         - x[0] * sin(sqrt(abs(x[0] - (x[1] + 47))));
-}
-
-double goldstein_price(std::vector<double>& x) {
-    double x1 = x[0];
-    double x2 = x[1];
-
-    double term1 = (1 + pow(x1 + x2 + 1, 2) * (19 - 14*x1 + 3*pow(x1, 2) - 14*x2 + 6*x1*x2 + 3*pow(x2, 2)));
-    double term2 = (30 + pow(2*x1 - 3*x2, 2) * (18 - 32*x1 + 12*pow(x1, 2) + 48*x2 - 36*x1*x2 + 27*pow(x2, 2)));
-
-    return term1 * term2;
-}
-
 // Woods Function
-double woods(std::vector<double>& x) {
+double woods(const std::vector<double>& x) {
+  funev++;
   double x1 = x[0];
   double x2 = x[1];
   double x3 = x[2];
@@ -114,6 +78,7 @@ double woods(std::vector<double>& x) {
 
 // Derivative of Woods function
 std::vector<double> woods_derivative(const std::vector<double>& x) {
+  gradev++;
   double x1 = x[0];
   double x2 = x[1];
   double x3 = x[2];
@@ -128,7 +93,8 @@ std::vector<double> woods_derivative(const std::vector<double>& x) {
 }
 
 // Powell's Quartic Function
-double powell_quartic(std::vector<double>& x) {
+double powell_quartic(const std::vector<double>& x) {
+  funev++;
   double x1 = x[0];
   double x2 = x[1];
   double x3 = x[2];
@@ -144,6 +110,7 @@ double powell_quartic(std::vector<double>& x) {
 
 // Powell's Quartic Function
 std::vector<double> powell_quartic_derivative(const std::vector<double>& x) {
+  gradev++;
   double x1 = x[0];
   double x2 = x[1];
   double x3 = x[2];
@@ -160,123 +127,139 @@ std::vector<double> powell_quartic_derivative(const std::vector<double>& x) {
 
 
 // Fletcher and Powell 3 Variable Helical Valley
-double helical_valley(std::vector<double>& x) {
-    double x1 = x[0];
-    double x2 = x[1];
-    double x3 = x[2];
+double helical_valley(const std::vector<double>& x) {
+  funev++;
+  double x1 = x[0];
+  double x2 = x[1];
+  double x3 = x[2];
 
-    const double pi = M_PI;
-    double theta;
+  const double pi = M_PI;
+  double theta;
 
-    // Calculate Theta based on the sign of x1
-    if (x1 > 0) {
-        theta = (1/2*pi) * atan2(x2, x1); 
-    } else {
-        theta = (1/2*pi) * atan2(x2, x1) + 0.5;
-    }
+  // Calculate Theta based on the sign of x1
+  /*if (x1 > 0) { // x1 positive
+    theta = (1/(2*pi)) * atan2(x2, x1); 
+    //std::cout << "x1 > 0, theta = " << theta << std::endl;
+} else { // x1 negative
+    theta = (1/(2*pi)) + (1/(2*pi)) * atan2(x2, x1);
+    //std::cout << "x1 < 0, theta = " << theta << std::endl;
+  }*/
 
-    double term1 = 100 * pow(x3 - 10*theta, 2);
-    double term2 = pow(sqrt(x1*x1 + x2*x2) - 1, 2);
+  if (x1 < 0) {// negative
+    theta = (1/2 * pi) * atan2(x2, x1) + 0.5;
+    //std::cout << "x1 > 0, theta = " << theta << std::endl;
+  } else { //positive
+    theta = (1/2 * pi) * atan2(x2, x1); 
+    //std::cout << "x1 < 0, theta = " << theta << std::endl;
+  }
 
-    return term1 + term2 + x3*x3;
+  double term1 = 100 * pow(x3 - 10*theta, 2);
+  double term2 = pow(sqrt(x1*x1 + x2*x2) - 1, 2);
+
+  return term1 + term2 + x3*x3;
 }
 
 // Fletcher and Powell 3 Variable Helical Valley
-std::vector<double> helical_valley_derivative(std::vector<double>& x) {
-    double x1 = x[0];
-    double x2 = x[1];
-    double x3 = x[2];
+std::vector<double> helical_valley_derivative(const std::vector<double>& x) {
+  gradev++;
+  double x1 = x[0];
+  double x2 = x[1];
+  double x3 = x[2];
 
-    double norm = std::sqrt(x1*x1 + x2*x2);
+  double norm = std::sqrt(x1*x1 + x2*x2);
 
-    // Check to avoid division by zero
-    if (norm == 0) {
-        return {0.0,0.0,0.0};
-    }
+  // Check to avoid division by zero
+  if (norm == 0) {
+    return {0.0,0.0,0.0};
+  }
 
-    const double pi = M_PI;
-    double theta;
+  const double pi = M_PI;
+  double theta;
 
-    if (x1 > 0) {
-        theta = (1/2*pi) * atan2(x2, x1); 
-    } else {
-        theta = (1/2*pi) * atan2(x2, x1) + 0.5;
-    }
+  if (x1 < 0) {// negative
+    theta = (1/2 * pi) * atan2(x2, x1) + 0.5;
+    //std::cout << "x1 > 0, theta = " << theta << std::endl;
+  } else { // nonnegative
+    theta = (1/2 * pi) * atan2(x2, x1); 
+    //std::cout << "x1 < 0, theta = " << theta << std::endl;
+  }
 
-    // Partial derivative with respect to x1, x2, and x3
-    double term1 =  2 * x1 * (norm - 1) / norm;
-    double term2 = 2 * x2 * (norm - 1) / norm;
-    double term3 = 200 * (x3 - 10*theta) + 2 * x3;
-    return {term1, term2, term3};
+  // Partial derivative with respect to x1, x2, and x3
+  double term1 =  2 * x1 * (norm - 1) / norm;
+  double term2 = 2 * x2 * (norm - 1) / norm;
+  double term3 = 200 * (x3 - 10*theta) + 2 * x3;
+  return {term1, term2, term3};
 }
 
 
 // Fletcher - Powell Trigonometric function
-double fletcher_powell_trig(std::vector<double>& x0){
-    int n = 5 + rand() % 71; // Random n between 5 and 75
+double fletcher_powell_trig(const std::vector<double>& x0){
+  funev++;
+  int n = 5 + rand() % 71; // Random n between 5 and 75
 
-    // Initialize x, a, b with random values
-    std::vector<double> x(n);
-    std::vector<std::vector<double>> a(n, std::vector<double>(n));
-    std::vector<std::vector<double>> b(n, std::vector<double>(n));
+  // Initialize x, a, b with random values
+  std::vector<double> x(n);
+  std::vector<std::vector<double>> a(n, std::vector<double>(n));
+  std::vector<std::vector<double>> b(n, std::vector<double>(n));
 
-    for(int i = 0; i < n; i++) {
-        // Random value between -pi and pi
-        x[i] = -M_PI + (2 * M_PI * (rand() / (double)RAND_MAX));
-        for(int j = 0; j < n; j++) {
-            // Random values between -100 and 100
-            a[i][j] = -100.0 + (200.0 * (rand() / (double)RAND_MAX));
-            b[i][j] = -100.0 + (200.0 * (rand() / (double)RAND_MAX));
-        }
-    }
+  for(int i = 0; i < n; i++) {
+      // Random value between -pi and pi
+      x[i] = -M_PI + (2 * M_PI * (rand() / (double)RAND_MAX));
+      for(int j = 0; j < n; j++) {
+          // Random values between -100 and 100
+          a[i][j] = -100.0 + (200.0 * (rand() / (double)RAND_MAX));
+          b[i][j] = -100.0 + (200.0 * (rand() / (double)RAND_MAX));
+      }
+  }
 
-    n = x.size();
-    double sum = 0.0;
-    for(int i = 0; i < n; i++) {
-        double e_i = 0.0;
-        double inner_sum = 0.0;
-        for(int j = 0; j < n; j++) {
-            double value = a[i][j] * sin(x[j]) + b[i][j] * cos(x[j]);
-            e_i += value;
-            inner_sum += value;
-        }
-        sum += (e_i - inner_sum) * (e_i - inner_sum);
-    }
-    return sum;
+  n = x.size();
+  double sum = 0.0;
+  for(int i = 0; i < n; i++) {
+      double e_i = 0.0;
+      double inner_sum = 0.0;
+      for(int j = 0; j < n; j++) {
+          double value = a[i][j] * sin(x[j]) + b[i][j] * cos(x[j]);
+          e_i += value;
+          inner_sum += value;
+      }
+      sum += (e_i - inner_sum) * (e_i - inner_sum);
+  }
+  return sum;
 }
 
 // Fletcher-Powell Trigonometric function derivative
 std::vector<double> fletcher_powell_trig_derivative(const std::vector<double>& x) {
-    int n = x.size();
+  gradev++;
+  int n = x.size();
 
-    // Initialize a, b with random values
-    std::vector<std::vector<double>> a(n, std::vector<double>(n));
-    std::vector<std::vector<double>> b(n, std::vector<double>(n));
+  // Initialize a, b with random values
+  std::vector<std::vector<double>> a(n, std::vector<double>(n));
+  std::vector<std::vector<double>> b(n, std::vector<double>(n));
 
-    for(int i = 0; i < n; i++) {
-        for(int j = 0; j < n; j++) {
-            a[i][j] = -100.0 + (200.0 * (rand() / (double)RAND_MAX));
-            b[i][j] = -100.0 + (200.0 * (rand() / (double)RAND_MAX));
-        }
-    }
+  for(int i = 0; i < n; i++) {
+      for(int j = 0; j < n; j++) {
+          a[i][j] = -100.0 + (200.0 * (rand() / (double)RAND_MAX));
+          b[i][j] = -100.0 + (200.0 * (rand() / (double)RAND_MAX));
+      }
+  }
 
-    // Gradient vector
-    std::vector<double> grad(n, 0.0);
+  // Gradient vector
+  std::vector<double> grad(n, 0.0);
 
-    for(int k = 0; k < n; k++) {
-        double gradient = 0.0;
-        for(int i = 0; i < n; i++) {
-            double e_i = 0.0;
-            for(int j = 0; j < n; j++) {
-                e_i += a[i][j] * sin(x[j]) + b[i][j] * cos(x[j]);
-            }
+  for(int k = 0; k < n; k++) {
+      double gradient = 0.0;
+      for(int i = 0; i < n; i++) {
+          double e_i = 0.0;
+          for(int j = 0; j < n; j++) {
+              e_i += a[i][j] * sin(x[j]) + b[i][j] * cos(x[j]);
+          }
 
-            double derivative_e_i = a[i][k] * cos(x[k]) - b[i][k] * sin(x[k]);
-            gradient += 2 * (e_i - e_i) * derivative_e_i;
-        }
-        grad[k] = gradient;
-    }
-    return grad;
+          double derivative_e_i = a[i][k] * cos(x[k]) - b[i][k] * sin(x[k]);
+          gradient += 2 * (e_i - e_i) * derivative_e_i;
+      }
+      grad[k] = gradient;
+  }
+  return grad;
 }
 
 double randomValue(double lower, double upper) {
@@ -289,33 +272,35 @@ double model(double x1, double x2, double x3, double Ti) {
 }
 
 
-double thermister(std::vector<double>& x) {
-    const int n = 16;
-    
-    // Initialize y_hat, T with random values ???
-    std::vector<double> y_hat(n);
-    std::vector<double> T(n);
-    for(int i = 0; i < n; i++) {
-        y_hat[i] = randomValue(0.0, 1.0);
-        T[i] = randomValue(0.0, 1.0);
-    }
+double thermister(const std::vector<double>& x) {
+  funev++;
+  const int n = 16;
+  
+  // Initialize y_hat, T with random values ???
+  std::vector<double> y_hat(n);
+  std::vector<double> T(n);
+  for(int i = 0; i < n; i++) {
+      y_hat[i] = randomValue(0.0, 1.0);
+      T[i] = randomValue(0.0, 1.0);
+  }
 
-    double x1 = x[0];
-    double x2 = x[1];
-    double x3 = x[2];
-    
-    double sum = 0.0;
+  double x1 = x[0];
+  double x2 = x[1];
+  double x3 = x[2];
+  
+  double sum = 0.0;
 
-    for(int i = 0; i < n; i++) {
-        double y_i = x1 * exp(x2 / (T[i] + x3));
-        sum += (y_i - y_hat[i]) * (y_i - y_hat[i]);
-    }
+  for(int i = 0; i < n; i++) {
+      double y_i = x1 * exp(x2 / (T[i] + x3));
+      sum += (y_i - y_hat[i]) * (y_i - y_hat[i]);
+  }
 
-    return sum;
+  return sum;
 }
 
 // Sum of Two Exponentials
-double two_exponentials(std::vector<double>& x) {
+double two_exponentials(const std::vector<double>& x) {
+  funev++;
   double x1 = x[0]; 
   double x2 = x[1];
 
@@ -334,8 +319,8 @@ double two_exponentials(std::vector<double>& x) {
 }
 
 // Chemical Equilibrium Problem 
-double chemical_equilibrium(std::vector<double>& x) {
-
+double chemical_equilibrium(const std::vector<double>& x) {
+  funev++;
   double x1 = x[0];
   double x2 = x[1];
   double x3 = x[2];
@@ -348,8 +333,8 @@ double chemical_equilibrium(std::vector<double>& x) {
 }
 
 // Heat Conduction Problem 
-double heat_conduction(std::vector<double>& x ) {
-
+double heat_conduction(const std::vector<double>& x ) {
+  funev++;
   double x1 = x[0];
   double x2 = x[1]; 
   double x3 = x[2];
@@ -362,4 +347,45 @@ double heat_conduction(std::vector<double>& x ) {
 
   return term1 + term2 + term3 + term4;
 
+}
+
+// simulated annealing
+// 
+
+double rastrigin(const std::vector<double>& x) {
+  funev++;
+  double sum = 0;
+
+  for (int i = 0; i < x.size(); i++) {
+    sum += x[i] * x[i] - 10 * cos(2 * M_PI * x[i]); 
+  }
+  return 10 * x.size() + sum;
+}
+
+double ackley(const std::vector<double>& x) {
+  funev++;
+    double sum1 = 0;
+    double sum2 = 0;
+    for (int i = 0; i < x.size(); i++) {
+        sum1 += x[i] * x[i];
+        sum2 += cos(2 * M_PI * x[i]);
+    }
+    return -20 * exp(-0.2 * sqrt(sum1 / x.size())) - exp(sum2 / x.size()) + 20 + M_E; 
+}
+
+double eggholder(const std::vector<double>& x) {
+  funev++;
+  return -x[1] * sin(sqrt(abs(x[0] + x[1] + 47))) 
+         - x[0] * sin(sqrt(abs(x[0] - (x[1] + 47))));
+}
+
+double goldstein_price(const std::vector<double>& x) {
+  funev++;
+    double x1 = x[0];
+    double x2 = x[1];
+
+    double term1 = (1 + pow(x1 + x2 + 1, 2) * (19 - 14*x1 + 3*pow(x1, 2) - 14*x2 + 6*x1*x2 + 3*pow(x2, 2)));
+    double term2 = (30 + pow(2*x1 - 3*x2, 2) * (18 - 32*x1 + 12*pow(x1, 2) + 48*x2 - 36*x1*x2 + 27*pow(x2, 2)));
+
+    return term1 * term2;
 }
