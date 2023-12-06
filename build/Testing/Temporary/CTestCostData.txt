@@ -1,4 +1,0 @@
-UtilityTests 7 0.0234741
-OptimizationTests 7 0.0151664
-FunctionTests 2 0.0475475
----
